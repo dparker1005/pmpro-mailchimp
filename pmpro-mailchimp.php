@@ -30,22 +30,8 @@ function pmpromc_init()
     }
     $GLOBALS['pmpromc_api']->set_key();
 
-    //are we on the checkout page?
-    $is_checkout_page = (isset($_REQUEST['submit-checkout']) || (isset($_REQUEST['confirm']) && isset($_REQUEST['gateway'])));
-
-    //setup hooks for user_register
-    if (!empty($options['users_lists']) && !$is_checkout_page)
-        add_action("user_register", "pmpromc_user_register");
-
     //setup hooks for PMPro levels
     pmpromc_getPMProLevels();
-    global $pmpromc_levels;
-
-    if (!empty($pmpromc_levels) && !$is_checkout_page) {
-        add_action("pmpro_after_change_membership_level", "pmpromc_pmpro_after_change_membership_level", 15, 2);
-    } elseif (!empty($pmpromc_levels)) {
-        add_action("pmpro_after_checkout", "pmpromc_pmpro_after_checkout", 15);
-    }
 }
 add_action("init", "pmpromc_init", 0);
 
@@ -344,15 +330,18 @@ function pmpromc_pmpro_after_checkout($user_id)
 
     pmpromc_subscribeToAdditionalLists($user_id);
 }
+add_action("pmpro_after_checkout", "pmpromc_pmpro_after_checkout", 15);
 
 /*
 	Subscribe a user to any additional opt-in lists selected
 */
-function pmpromc_subscribeToAdditionalLists($user_id)
-{
-    $options = get_option("pmpromc_options");
-    if (!empty($_REQUEST['additional_lists']))
-        $additional_lists = $_REQUEST['additional_lists'];
+function pmpromc_subscribeToAdditionalLists( $user_id )  {
+  $options = get_option("pmpromc_options");
+  if ( ! empty( $_REQUEST['additional_lists'] ) ) {
+    $additional_lists = $_REQUEST['additional_lists'];
+  } elseif ( ! empty( $_SESSION['additional_lists'] ) ) {
+    $additional_lists = $_SESSION['additional_lists'];
+  }
 
     if (!empty($additional_lists)) {
         update_user_meta($user_id, 'pmpromc_additional_lists', $additional_lists);
@@ -383,6 +372,7 @@ function pmpromc_user_register($user_id)
         }
     }
 }
+add_action("user_register", "pmpromc_user_register");
 
 /*
 	Registers settings on admin init
@@ -1229,6 +1219,7 @@ function pmpromc_pmpro_after_change_membership_level($level_id, $user_id)
 
     }
 }
+add_action("pmpro_after_change_membership_level", "pmpromc_pmpro_after_change_membership_level", 15, 2);
 
 /**
  * Change email in Mailchimp if a user's email is changed in WordPress
