@@ -1265,29 +1265,20 @@ function pmpromc_profile_update( $user_id, $old_user_data ) {
 
 		if ( ! empty( $audiences ) ) {
 			// Execute changes that are already queued.
-			pmpromc_process_audience_member_updates_queue();
 			foreach ( $audiences as $audience ) {
 				// Check for member.
 				$member = $api->get_listinfo_for_member( $audience->id, $old_user_data );
-				if ( ! empty( $member ) ) {
+				if ( isset( $member->status ) ) {
 					global $pmpromc_audience_member_updates;
 					if ( $new_user_data->user_email != $old_user_data->user_email ) {
-						// If the user is changing emails, unsubscribe the old email.
-						$user_data = (object) array(
-							'email_address' => $old_user_data->user_email,
-							'status'        => 'unsubscribed',
-							'merge_fields'  => apply_filters( 'pmpro_mailchimp_listsubscribe_fields', array( 'FNAME' => $new_user_data->first_name, 'LNAME' => $new_user_data->last_name), $new_user_data, $audience ),
+						// Update the email.
+						$data = array(
+							'email_address' => $new_user_data->user_email,
 						);
-						// Manually add email removal to queue since the user's email has changed.
-						if ( empty( $pmpromc_audience_member_updates ) ) {
-							$pmpromc_audience_member_updates = array();
+						$api->update_contact( $member, $data );
+						if ( WP_DEBUG ) {
+							error_log( "Updated user's email address from {$old_user_data->user_email} to {$new_user_data->user_email} for audience {$audience->id}." );
 						}
-
-						if ( ! array_key_exists( $audience->id, $pmpromc_audience_member_updates ) ) {
-							$pmpromc_audience_member_updates[ $audience->id ] = array();
-						}
-						// Set as user id 0 as a special case to avoid conflict with new email being added.
-						$pmpromc_audience_member_updates[ $audience->id ][0] = $user_data;
 					}
 					// Update the user's merge fields.
 					pmpromc_add_audience_member_update( $user_id, $audience->id, $member->status );
